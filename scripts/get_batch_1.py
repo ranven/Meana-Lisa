@@ -2,6 +2,8 @@
     # pip install pymongo requests
 
 import json
+import logging
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Iterable, Any
@@ -24,10 +26,33 @@ TIMEOUT = 15
 BIG_DELAY = 12
 DELAY = 1
 
-START = 1000 # -> if somehow everything oblitarates, update this number to the last index of list on painting ids
-
+START = 1028 # -> if somehow everything oblitarates, update this number to the last index of list on painting ids
 
 IDS_PATH = Path("data/paintings_id.json")  # JSON array of IDs
+LOGS_DIR = Path("logs")
+
+def setup_logging():
+    """Setup logging with timestamped file and console output."""
+    # Create logs directory if it doesn't exist
+    LOGS_DIR.mkdir(exist_ok=True)
+    
+    # Create timestamped log filename
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_filename = LOGS_DIR / f"batch_processing_{timestamp}.log"
+    
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(log_filename),
+            logging.StreamHandler(sys.stdout)  # Also output to console
+        ]
+    )
+    
+    logger = logging.getLogger(__name__)
+    logger.info(f"Logging initialized. Log file: {log_filename}")
+    return logger
 
 def load_ids(path):
     with path.open() as f:
@@ -53,8 +78,20 @@ def batched(iterable: Iterable, n: int):
         yield batch
 
 def main():
+    # Initialize logging
+    logger = setup_logging()
+    
+    logging.info("=" * 60)
+    logging.info("Starting batch processing session")
+    logging.info(f"Script: {Path(__file__).name}")
+    logging.info(f"Start time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    logging.info("=" * 60)
+    
     object_ids = load_ids(IDS_PATH)
     object_ids = object_ids[START:]
+    
+    logging.info(f"Loaded {len(object_ids)} object IDs to process")
+    logging.info(f"Starting from index {START}")
 
     client = MongoClient(MONGODB_URI)
     col = client[DB_NAME][COLL_NAME]
@@ -74,14 +111,14 @@ def main():
             payload = fetch_search(session, oid)
         except requests.HTTPError as e:
             if e.response is not None and e.response.status_code == 404:
-                print(f"[skip-404] {oid}")
+                logging.info(f"[skip-404] {oid}")
                 i += 1            # advance past this oid
                 continue
-            print(f"[retry] {oid}: HTTP {getattr(e.response,'status_code',None)}. sleeping {BIG_DELAY}s")
+            logging.warning(f"[retry] {oid}: HTTP {getattr(e.response,'status_code',None)}. sleeping {BIG_DELAY}s")
             time.sleep(BIG_DELAY) # stay on same oid
             continue
         except requests.RequestException as e:
-            print(f"[retry] {oid}: http error: {e}. sleeping {BIG_DELAY}s")
+            logging.warning(f"[retry] {oid}: http error: {e}. sleeping {BIG_DELAY}s")
             time.sleep(BIG_DELAY) # stay on same oid
             continue
 
@@ -96,13 +133,21 @@ def main():
                 upsert=True,
             )
         except Exception as e:
-            print(f"[retry] mongo error for {oid}: {e}. sleeping {BIG_DELAY}s")
+            logging.error(f"[retry] mongo error for {oid}: {e}. sleeping {BIG_DELAY}s")
             time.sleep(BIG_DELAY) # stay on same oid
             continue
 
         processed += 1
-        print(f"[ok] {START + processed} upserted {oid}")
+        logging.info(f"[ok] {START + processed} upserted {oid}")
         i += 1  # advance only after success or a 404 skip
+
+    # Session end logging
+    logging.info("=" * 60)
+    logging.info("Batch processing session completed")
+    logging.info(f"End time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    logging.info(f"Total processed: {processed}")
+    logging.info(f"Total objects in batch: {n}")
+    logging.info("=" * 60)
 
 if __name__ == "__main__":
     main()
