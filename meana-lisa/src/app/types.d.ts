@@ -1,7 +1,7 @@
 interface Artwork {
   id: number;
   primaryImage: string;
-  objectName: string;
+  artistDisplayName: string;
   title: string;
   medium: string;
   period: string;
@@ -9,6 +9,9 @@ interface Artwork {
   classification: string;
   primaryColor: RGBString;
   palette: RGBString[];
+  department: string;
+  isHighlight: boolean;
+  culture: string;
 }
 
 interface Year {
