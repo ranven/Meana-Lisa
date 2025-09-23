@@ -1,12 +1,28 @@
 interface Artwork {
+  // general data
   id: number;
+  isHighlight: boolean;
   primaryImage: string;
+  department: string;
   objectName: string;
   title: string;
+
+  // artist data
+  artistDisplayName: string;
+  artistNationality: string;
+  artistBeginDate: string;
+  artistEndDate: string;
+  artistWikiUrl: string;
+
+  // artwork data
+  objectBeginDate: string;
+  objectEndDate: string;
   medium: string;
-  period: string;
-  year: number; // = objectEndDate
+  dimensions: string;
   classification: string;
+  objectUrl: string;
+
+  // color data
   primaryColor: RGBString;
   palette: RGBString[];
 }
