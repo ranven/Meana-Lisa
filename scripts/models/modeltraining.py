@@ -10,6 +10,7 @@ from pymongo import MongoClient
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 import os
+from imblearn.over_sampling import SMOTE
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -195,6 +196,7 @@ X_train_n, X_test_n, y_train_n, y_test_n = train_test_split(
     X_nat, y_nationality, test_size=0.2, random_state=RANDOM_STATE, stratify=y_nationality
 )
 
+
 le_department = LabelEncoder()
 y_department = le_department.fit_transform(df_filtered['Department'])
 
@@ -209,9 +211,12 @@ X_train_c, X_test_c, y_train_c, y_test_c = train_test_split(
     X_cen, y_century, test_size=0.2, random_state=RANDOM_STATE, stratify=y_century
 )
 
+# Apply SMOTE for nat+century sets to improve scores for smaller classes
+n_smote = SMOTE(random_state=RANDOM_STATE)
+X_train_n_smote, y_train_n_smote = n_smote.fit_resample(X_train_n, y_train_n)
 
-print(f"\nTraining set size: {X_train_c.shape[0]}")
-print(f"Testing set size: {X_test_c.shape[0]}")
+c_smote = SMOTE(random_state=RANDOM_STATE)
+X_train_c_smote, y_train_c_smote = c_smote.fit_resample(X_train_c, y_train_c)
 
 # ==============================================================================
 # Model training
@@ -223,7 +228,7 @@ century_model = RandomForestClassifier(
     random_state=RANDOM_STATE,
     class_weight='balanced'
 )
-century_model.fit(X_train_c, y_train_c)
+century_model.fit(X_train_c_smote, y_train_c_smote)
 
 department_model = RandomForestClassifier(
     n_estimators=100,
@@ -239,7 +244,7 @@ nationality_model = RandomForestClassifier(
     random_state=RANDOM_STATE,
     class_weight='balanced'
 )
-nationality_model.fit(X_train_n, y_train_n)
+nationality_model.fit(X_train_n_smote, y_train_n_smote)
 
 full_integer_labels_c = np.arange(len(le_century.classes_))
 full_integer_labels_dept = np.arange(len(le_department.classes_))
