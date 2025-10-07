@@ -18,7 +18,7 @@ export default function Home() {
 
   return (
     <div className="py-10 flex flex-col items-center justify-center gap-10">
-      <h1 className="text-8xl">Meana Lisa</h1>
+      <h1 className="text-8xl">Meana Lisa dfdsfdfsf</h1>
 
       {result && (
         <div className="text-center mt-4">
