@@ -11,6 +11,7 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 import os
 from imblearn.over_sampling import SMOTE
+import joblib
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -124,6 +125,11 @@ X_all = np.array(df_filtered['Features'].tolist())
 print(
     f"\nFinal dataset size (rares filtered): {X_all.shape[0]} samples\n")
 
+# Impute year to predict nationality
+century_to_year_map = df_filtered.groupby('Century')[
+    'Year'].mean().round(0).astype(int).to_dict()
+
+
 # ==============================================================================
 # Feature augmentation: PCA on Color Features and One_Hot Encoding Features
 # ==============================================================================
@@ -161,9 +167,13 @@ df_ohe_department = pd.get_dummies(
 X_department = df_ohe_department.values
 
 # Final features sets for each model
-X_cen = np.hstack((X_pca, X_nationality, X_department))
-X_dep = np.hstack((X_pca, X_year, X_nationality))
-X_nat = np.hstack((X_pca, X_year, X_department))
+X_dep = X_pca
+X_nat = np.hstack((
+    X_pca[df_filtered['Nationality'] != 'Unknown'],
+    X_year[df_filtered['Nationality'] != 'Unknown'].reshape(-1, 1),
+    X_department[df_filtered['Nationality'] != 'Unknown']
+))
+X_cen = np.hstack((X_pca, X_nationality))
 
 # ==============================================================================
 # Encoding + split to sets
@@ -173,11 +183,7 @@ print("\n--- MODEL TRAINING ---")
 
 # Nationality model: filter out 'Unknown' class and limit classes to top 10
 df_nat = df_filtered[df_filtered['Nationality'] != 'Unknown'].copy()
-X_nat = np.hstack((
-    X_pca[df_filtered['Nationality'] != 'Unknown'],
-    X_year[df_filtered['Nationality'] != 'Unknown'].reshape(-1, 1),
-    X_department[df_filtered['Nationality'] != 'Unknown']
-))
+
 
 top10_nat = df_nat['Nationality'].value_counts(
 ).nlargest(10).index.tolist()
@@ -290,3 +296,22 @@ print("Classification Report:\n", classification_report(
 print(
     f"Log Loss (Confidence): {log_loss(y_test_n, y_proba_n, labels=full_integer_labels_n):.4f}")
 print(f"Accuracy: {accuracy_score(y_test_n, y_pred_n):.4f}")
+
+# ==============================================================================
+# Exporting models & transformers
+# ==============================================================================
+
+os.makedirs('model_artifacts', exist_ok=True)
+
+joblib.dump(nationality_model, 'model_artifacts/nationality_model.joblib')
+joblib.dump(department_model, 'model_artifacts/department_model.joblib')
+joblib.dump(century_model, 'model_artifacts/century_model.joblib')
+
+joblib.dump(scaler_color, 'model_artifacts/scaler_color.joblib')
+joblib.dump(pca, 'model_artifacts/pca.joblib')
+
+joblib.dump(le_nationality, 'model_artifacts/le_nationality.joblib')
+joblib.dump(le_department, 'model_artifacts/le_department.joblib')
+joblib.dump(le_century, 'model_artifacts/le_century.joblib')
+
+joblib.dump(century_to_year_map, 'model_artifacts/century_to_year_map.joblib')

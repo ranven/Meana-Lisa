@@ -6,3 +6,4 @@ scikit-image
 pymongo
 python-dotenv
 imblearn
+joblib
