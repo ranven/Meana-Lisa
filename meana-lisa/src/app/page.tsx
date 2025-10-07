@@ -7,11 +7,20 @@ export default function Home() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const res = await fetch("/api/predict", {
+    const some_image_from_met = "https://images.metmuseum.org/CRDImages/ep/original/DP124058.jpg"
+
+    const res = await fetch("/api/url-predict", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ image_url: some_image_from_met }),
     });
+
+    // FOR UPLOADS
+    // const res = await fetch("/api/upload-predict", {
+    //   method: "POST",
+    //   headers: { "Content-Type": "application/json" },
+    //   body: something lol
+    // });
     const data = await res.json();
     setResult(data.data ? JSON.stringify(data.data) : data.error || "error");
   }
