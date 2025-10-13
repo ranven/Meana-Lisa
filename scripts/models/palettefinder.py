@@ -3,6 +3,8 @@ import numpy as np
 from pymongo import MongoClient
 from scipy.spatial.distance import cdist
 import os
+import matplotlib.colors as mcolors
+from skimage.color import rgb2hsv
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -21,8 +23,19 @@ DB_NAME = "Paintings"
 COLLECTION_NAME = "Batch-3"
 
 
+def process_user_palette(palette):
+    features = []
+    for hex_color, weight in palette:
+        rgb = mcolors.hex2color(hex_color)
+        hsv = rgb2hsv(np.array(rgb).reshape(1, 1, 3))[0][0]
+        features.extend([hsv[0], hsv[1], hsv[2], weight / 100.0])
+    return features
+
+
 def find_similar_palettes(user_palette, n=25):
-    user_40 = np.array(user_palette).reshape(1, -1)
+    user_features = process_user_palette(user_palette)
+
+    user_40 = np.array(user_features).reshape(1, -1)
     user_scaled = scaler_color.transform(user_40)
     user_pca = pca.transform(user_scaled)
 
@@ -34,7 +47,6 @@ def find_similar_palettes(user_palette, n=25):
         {'pcaFeatures': {'$exists': True}},
         {'_id': 1, 'pcaFeatures': 1}
     ))
-    client.close()
 
     if not mongo_data:
         return {"similar": [], "different": []}
