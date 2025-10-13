@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     // Prepare a client-side file reference; upload occurs during predict
     const file_ref = handle_file(file);
 
-    const res = await app.predict("/predict", {
+    const res = await app.predict("/main", {
       image_url: "", // textbox unused
       image_file: file_ref, // file input
     });

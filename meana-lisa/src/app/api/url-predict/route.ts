@@ -7,7 +7,7 @@ export async function POST(req: Request) {
     const { image_url } = await req.json();
     const app = await Client.connect(process.env.HF_SPACE_ID!);
 
-    const res = await app.predict("/predict", {
+    const res = await app.predict("/main", {
       image_url, // textbox input
       image_file: null, // file input unused
     });

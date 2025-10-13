@@ -1,59 +1,159 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { InputView } from "@/components/views/InputView";
+import { LoaderView } from "@/components/views/LoaderView";
+import { ResultsView } from "@/components/views/ResultsView";
+
+type AppState = 'input' | 'loading' | 'results';
+
+interface PaletteColor {
+  color: string;
+  percentage: number;
+}
+
+interface AnalysisResult {
+  department: string;
+  century: number;
+  nationality: string;
+  palette: PaletteColor[];
+}
 
 export default function Home() {
-  const [name, setName] = useState("");
-  const [result, setResult] = useState("");
+  const [appState, setAppState] = useState<AppState>('input');
+  const [analysisData, setAnalysisData] = useState<AnalysisResult | null>(null);
+  const [currentImageUrl, setCurrentImageUrl] = useState<string>("");
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [displayState, setDisplayState] = useState<AppState>('input');
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const some_image_from_met = "https://images.metmuseum.org/CRDImages/ep/original/DP124058.jpg"
+  // Handle state transitions with fade effect
+  const transitionToState = (newState: AppState) => {
+    if (newState === displayState) return;
+    
+    setIsTransitioning(true);
+    
+    // Start exit transition
+    setTimeout(() => {
+      setDisplayState(newState);
+      setIsTransitioning(false);
+    }, 150); // Half of the transition duration
+  };
 
-    const res = await fetch("/api/url-predict", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ image_url: some_image_from_met }),
-    });
+  // Update display state when app state changes
+  useEffect(() => {
+    transitionToState(appState);
+  }, [appState]);
 
-    // FOR UPLOADS
-    // const res = await fetch("/api/upload-predict", {
-    //   method: "POST",
-    //   headers: { "Content-Type": "application/json" },
-    //   body: something lol
-    // });
-    const data = await res.json();
-    setResult(data.data ? JSON.stringify(data.data) : data.error || "error");
-  }
+  const handleAnalyze = async (imageUrl: string) => {
+    setCurrentImageUrl(imageUrl);
+    setAppState('loading');
+    
+    try {
+      const res = await fetch("/api/url-predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image_url: imageUrl }),
+      });
+      
+      const data = await res.json();
+      
+      if (data.data && data.data.length > 0) {
+        const result = data.data[0]; // Get the first result
+        // Transform the API response to match our interface
+        setAnalysisData({
+          department: result.department || "Unknown",
+          century: result.century || 0,
+          nationality: result.nat || "Unknown",
+          palette: result.palette?.map(([color, percentage]: [string, number]) => ({
+            color,
+            percentage
+          })) || []
+        });
+        setAppState('results');
+      } else {
+        console.error("Analysis failed:", data.error);
+        setAppState('input');
+      }
+    } catch (error) {
+      console.error("Error analyzing image:", error);
+      setAppState('input');
+    }
+  };
+
+  const handleUpload = async (file: File) => {
+    setAppState('loading');
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const res = await fetch("/api/upload-predict", {
+        method: "POST",
+        body: formData,
+      });
+      
+      const data = await res.json();
+      
+      if (data.data && data.data.length > 0) {
+        // Create a preview URL for the uploaded file
+        const previewUrl = URL.createObjectURL(file);
+        setCurrentImageUrl(previewUrl);
+        
+        const result = data.data[0]; // Get the first result
+        // Transform the API response to match our interface
+        setAnalysisData({
+          department: result.department || "Unknown",
+          century: result.century || 0,
+          nationality: result.nat || "Unknown",
+          palette: result.palette?.map(([color, percentage]: [string, number]) => ({
+            color,
+            percentage
+          })) || []
+        });
+        setAppState('results');
+      } else {
+        console.error("Upload analysis failed:", data.error);
+        setAppState('input');
+      }
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      setAppState('input');
+    }
+  };
+
+  const handleReset = () => {
+    setAppState('input');
+    setAnalysisData(null);
+    setCurrentImageUrl("");
+  };
+
+  const renderCurrentView = () => {
+    switch (displayState) {
+      case 'input':
+        return <InputView onAnalyze={handleAnalyze} onUpload={handleUpload} />;
+      case 'loading':
+        return <LoaderView />;
+      case 'results':
+        return (
+          <ResultsView 
+            data={analysisData} 
+            imageUrl={currentImageUrl}
+            onReset={handleReset} 
+          />
+        );
+      default:
+        return <InputView onAnalyze={handleAnalyze} onUpload={handleUpload} />;
+    }
+  };
 
   return (
-    <div className="py-10 flex flex-col items-center justify-center gap-10">
-      <h1 className="text-8xl">Meana Lisa dfdsfdfsf</h1>
-
-      {result && (
-        <div className="text-center mt-4">
-          <p className="font-mono text-sm">Response:</p>
-          <pre className="bg-gray-100 p-2 rounded max-w-md text-xs overflow-auto">
-            {result}
-          </pre>
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="flex flex-col items-center gap-4">
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Enter text"
-          className="border px-3 py-2 rounded text-lg"
-        />
-        <button
-          type="submit"
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-        >
-          Send
-        </button>
-      </form>
-
-
+    <div className="min-h-full">
+      <div 
+        className={`transition-all duration-300 ease-in-out ${
+          isTransitioning ? 'fade-exit-active' : 'fade-enter-active'
+        }`}
+      >
+        {renderCurrentView()}
+      </div>
     </div>
   );
 }
