@@ -43,36 +43,51 @@ def find_similar_palettes(user_palette, n=25):
     pca_dataset = np.array([doc['pcaFeatures'] for doc in mongo_data])
 
     distances = cdist(user_pca, pca_dataset, metric='euclidean')[0]
+    d_min = np.min(distances)
 
     sorted_indices = np.argsort(distances)
 
     similar_indices = sorted_indices[:n]
     different_indices = sorted_indices[-n:]
 
+    d_min = np.min(distances)
+    d_max = np.max(distances)
+
     def compile_results(indices):
         results = []
+        if d_max == d_min:
+            for i in indices:
+                results.append({
+                    'painting_id': painting_ids[i],
+                    'similarity_score': 100.0
+                })
+            return results
+
         for i in indices:
+            d = distances[i]
+
+            normalized_d = (d - d_min) / (d_max - d_min)
+            similarity_score = 100.0 * (1.0 - normalized_d)
+
             results.append({
                 'painting_id': painting_ids[i],
-                'distance': float(distances[i])
+                'similarity_score': round(similarity_score, 1)
             })
         return results
 
     similar_palettes_raw = compile_results(similar_indices)
     different_palettes_raw = compile_results(different_indices)
 
-    # sort to most similar first
     similar_palettes = sorted(
         similar_palettes_raw,
-        key=lambda x: x['distance'],
-        reverse=False
+        key=lambda x: x['similarity_score'],
+        reverse=True
     )
 
-    # sort to most dissimilar first
     different_palettes = sorted(
         different_palettes_raw,
-        key=lambda x: x['distance'],
-        reverse=True
+        key=lambda x: x['similarity_score'],
+        reverse=False
     )
 
     return {
