@@ -90,7 +90,35 @@ def find_similar_palettes(user_palette, n=25):
         reverse=False
     )
 
+    similar_ids = [p['painting_id'] for p in similar_palettes]
+    different_ids = [p['painting_id'] for p in different_palettes]
+
+    def fetch_and_merge_documents(id_list, score_list):
+        docs_cursor = collection.find({'_id': {'$in': id_list}})
+        docs_map = {doc['_id']: doc for doc in docs_cursor}
+        score_map = {p['painting_id']: p['similarity_score']
+                     for p in score_list}
+
+        final_results = []
+        for p_id in id_list:
+            doc = docs_map.get(p_id)
+            score = score_map.get(p_id)
+
+            if doc:
+                doc['similarity_score'] = score
+                doc['_id'] = str(doc['_id'])
+                final_results.append(doc)
+
+        return final_results
+
+    final_similar_results = fetch_and_merge_documents(
+        similar_ids, similar_palettes)
+    final_different_results = fetch_and_merge_documents(
+        different_ids, different_palettes)
+
+    client.close()
+
     return {
-        "similar": similar_palettes,
-        "different": different_palettes
+        "similar": final_similar_results,
+        "different": final_different_results
     }
