@@ -28,9 +28,9 @@ export default function Home() {
   // Handle state transitions with fade effect
   const transitionToState = (newState: AppState) => {
     if (newState === displayState) return;
-    
+
     setIsTransitioning(true);
-    
+
     // Start exit transition
     setTimeout(() => {
       setDisplayState(newState);
@@ -46,16 +46,16 @@ export default function Home() {
   const handleAnalyze = async (imageUrl: string) => {
     setCurrentImageUrl(imageUrl);
     setAppState('loading');
-    
+
     try {
       const res = await fetch("/api/url-predict", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image_url: imageUrl }),
       });
-      
+
       const data = await res.json();
-      
+
       if (data.data && data.data.length > 0) {
         const result = data.data[0]; // Get the first result
         // Transform the API response to match our interface
@@ -81,23 +81,23 @@ export default function Home() {
 
   const handleUpload = async (file: File) => {
     setAppState('loading');
-    
+
     try {
       const formData = new FormData();
       formData.append('file', file);
-      
+
       const res = await fetch("/api/upload-predict", {
         method: "POST",
         body: formData,
       });
-      
+
       const data = await res.json();
-      
+
       if (data.data && data.data.length > 0) {
         // Create a preview URL for the uploaded file
         const previewUrl = URL.createObjectURL(file);
         setCurrentImageUrl(previewUrl);
-        
+
         const result = data.data[0]; // Get the first result
         // Transform the API response to match our interface
         setAnalysisData({
@@ -134,10 +134,10 @@ export default function Home() {
         return <LoaderView />;
       case 'results':
         return (
-          <ResultsView 
-            data={analysisData} 
+          <ResultsView
+            data={analysisData}
             imageUrl={currentImageUrl}
-            onReset={handleReset} 
+            onReset={handleReset}
           />
         );
       default:
@@ -147,10 +147,9 @@ export default function Home() {
 
   return (
     <div className="min-h-full">
-      <div 
-        className={`transition-all duration-300 ease-in-out ${
-          isTransitioning ? 'fade-exit-active' : 'fade-enter-active'
-        }`}
+      <div
+        className={`transition-all duration-300 ease-in-out ${isTransitioning ? 'fade-exit-active' : 'fade-enter-active'
+          }`}
       >
         {renderCurrentView()}
       </div>

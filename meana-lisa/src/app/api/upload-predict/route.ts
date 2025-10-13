@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { Client, handle_file } from "@gradio/client";
 export const runtime = "nodejs";
 
-export async function POST(req: Request) {
+export async function POST(req: Request): Promise<NextResponse> {
   try {
     const form = await req.formData();
     const file = form.get("file") as File;
@@ -20,7 +20,9 @@ export async function POST(req: Request) {
       image_file: file_ref, // file input
     });
 
-    return NextResponse.json({ data: res.data });
+    const { department, nat, century, palette } = res.data as Meana;
+
+    return NextResponse.json({ department, nat, century, palette });
   } catch (err: any) {
     return NextResponse.json(
       { error: err?.message ?? "predict failed" },
