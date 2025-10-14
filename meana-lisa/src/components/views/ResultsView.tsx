@@ -20,7 +20,7 @@ interface AnalysisResult {
 }
 
 interface ResultsViewProps {
-  data: AnalysisResult[] | null;
+  data: AnalysisResult[][] | null;
   imageUrl: string;
   onReset: () => void;
 }
@@ -37,8 +37,8 @@ export function ResultsView({ data, imageUrl, onReset }: ResultsViewProps) {
     );
   }
 
-  // Extract the first result from the array
-  const result = data[0];
+  // Extract the first result from the nested array structure
+  const result = data[0][0];
   
   // Calculate average accuracy
   const averageAccuracy = (result.department.accuracy + result.century.accuracy + result.nat.accuracy) / 3;
@@ -92,7 +92,7 @@ export function ResultsView({ data, imageUrl, onReset }: ResultsViewProps) {
         <div className="flex flex-col items-start gap-3 mt-8">
           <h3 className="text-lg font-medium text-gray-800">Primary colour palette</h3>
           <div className="flex gap-2">
-            {result.palette.slice(0, 5).map((paletteColor, index) => (
+            {result.palette.slice(0, 5).map((paletteColor: [string, number], index: number) => (
               <div
                 key={index}
                 className="w-10 h-10 rounded-full border-2 border-gray-300"
@@ -102,7 +102,7 @@ export function ResultsView({ data, imageUrl, onReset }: ResultsViewProps) {
             ))}
           </div>
           <p className="text-[13px] text-gray-500">
-            {`[${result.palette.slice(0, 5).map(color => color[0]).join(', ')}]`}
+            {`[${result.palette.slice(0, 5).map((color: [string, number]) => color[0]).join(', ')}]`}
           </p>
         </div>
 

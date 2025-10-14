@@ -12,10 +12,8 @@ export async function POST(req: Request): Promise<NextResponse> {
       image_file: null, // file input unused
     });
 
-    // Ensure res.data matches the Meana interface
-    const { department, nat, century, palette } = res.data as Meana;
-
-    return NextResponse.json({ department, nat, century, palette });
+    // Return the full response data wrapped in a data array to match expected format
+    return NextResponse.json({ data: [res.data] });
   } catch (err: any) {
     return NextResponse.json(
       { error: err?.message ?? "predict failed" },
