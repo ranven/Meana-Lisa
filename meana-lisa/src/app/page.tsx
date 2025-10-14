@@ -6,21 +6,25 @@ import { ResultsView } from "@/components/views/ResultsView";
 
 type AppState = 'input' | 'loading' | 'results';
 
-interface PaletteColor {
-  color: string;
-  percentage: number;
-}
-
 interface AnalysisResult {
-  department: string;
-  century: number;
-  nationality: string;
-  palette: PaletteColor[];
+  department: {
+    value: string;
+    accuracy: number;
+  };
+  nat: {
+    value: string;
+    accuracy: number;
+  };
+  century: {
+    value: number;
+    accuracy: number;
+  };
+  palette: [string, number][];
 }
 
 export default function Home() {
   const [appState, setAppState] = useState<AppState>('input');
-  const [analysisData, setAnalysisData] = useState<AnalysisResult | null>(null);
+  const [analysisData, setAnalysisData] = useState<AnalysisResult[] | null>(null);
   const [currentImageUrl, setCurrentImageUrl] = useState<string>("");
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [displayState, setDisplayState] = useState<AppState>('input');
@@ -57,17 +61,8 @@ export default function Home() {
       const data = await res.json();
       
       if (data.data && data.data.length > 0) {
-        const result = data.data[0]; // Get the first result
-        // Transform the API response to match our interface
-        setAnalysisData({
-          department: result.department || "Unknown",
-          century: result.century || 0,
-          nationality: result.nat || "Unknown",
-          palette: result.palette?.map(([color, percentage]: [string, number]) => ({
-            color,
-            percentage
-          })) || []
-        });
+        // Pass the raw API response directly
+        setAnalysisData(data.data);
         setAppState('results');
       } else {
         console.error("Analysis failed:", data.error);
@@ -98,17 +93,8 @@ export default function Home() {
         const previewUrl = URL.createObjectURL(file);
         setCurrentImageUrl(previewUrl);
         
-        const result = data.data[0]; // Get the first result
-        // Transform the API response to match our interface
-        setAnalysisData({
-          department: result.department || "Unknown",
-          century: result.century || 0,
-          nationality: result.nat || "Unknown",
-          palette: result.palette?.map(([color, percentage]: [string, number]) => ({
-            color,
-            percentage
-          })) || []
-        });
+        // Pass the raw API response directly
+        setAnalysisData(data.data);
         setAppState('results');
       } else {
         console.error("Upload analysis failed:", data.error);
