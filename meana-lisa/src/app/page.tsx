@@ -24,7 +24,7 @@ interface AnalysisResult {
 
 export default function Home() {
   const [appState, setAppState] = useState<AppState>('input');
-  const [analysisData, setAnalysisData] = useState<AnalysisResult[] | null>(null);
+  const [analysisData, setAnalysisData] = useState<AnalysisResult[][] | null>(null);
   const [currentImageUrl, setCurrentImageUrl] = useState<string>("");
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [displayState, setDisplayState] = useState<AppState>('input');
@@ -121,7 +121,7 @@ export default function Home() {
       case 'results':
         return (
           <ResultsView
-            data={analysisData}
+            data={analysisData as any}
             imageUrl={currentImageUrl}
             onReset={handleReset}
           />
