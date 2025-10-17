@@ -34,7 +34,6 @@ def process_user_palette(palette):
 
 def find_similar_palettes(user_palette, n=25):
     user_features = process_user_palette(user_palette)
-
     user_40 = np.array(user_features).reshape(1, -1)
     user_scaled = scaler_color.transform(user_40)
     user_pca = pca.transform(user_scaled)
@@ -54,20 +53,17 @@ def find_similar_palettes(user_palette, n=25):
     painting_ids = [doc['_id'] for doc in mongo_data]
     pca_dataset = np.array([doc['pcaFeatures'] for doc in mongo_data])
 
-    distances = cdist(user_pca, pca_dataset, metric='euclidean')[0]
-    d_min = np.min(distances)
+    euclidean_distances = cdist(user_pca, pca_dataset, metric='euclidean')[0]
+    cosine_distances = cdist(user_pca, pca_dataset, metric='cosine')[0]
 
-    sorted_indices = np.argsort(distances)
-
-    similar_indices = sorted_indices[:n]
-    different_indices = sorted_indices[-n:]
-
-    d_min = np.min(distances)
-    d_max = np.max(distances)
+    sorted_euclidean_indices = np.argsort(euclidean_distances)
+    d_min_euclidean = np.min(euclidean_distances)
+    d_max_euclidean = np.max(euclidean_distances)
+    similar_indices = sorted_euclidean_indices[:n]
 
     def compile_results(indices):
         results = []
-        if d_max == d_min:
+        if d_max_euclidean == d_min_euclidean:
             for i in indices:
                 results.append({
                     'painting_id': painting_ids[i],
@@ -76,9 +72,10 @@ def find_similar_palettes(user_palette, n=25):
             return results
 
         for i in indices:
-            d = distances[i]
+            d = euclidean_distances[i]
 
-            normalized_d = (d - d_min) / (d_max - d_min)
+            normalized_d = (d - d_min_euclidean) / \
+                (d_max_euclidean - d_min_euclidean)
             similarity_score = 100.0 * (1.0 - normalized_d)
 
             results.append({
@@ -88,13 +85,40 @@ def find_similar_palettes(user_palette, n=25):
         return results
 
     similar_palettes_raw = compile_results(similar_indices)
-    different_palettes_raw = compile_results(different_indices)
-
     similar_palettes = sorted(
         similar_palettes_raw,
         key=lambda x: x['similarity_score'],
         reverse=True
     )
+
+    similar_ids = [p['painting_id'] for p in similar_palettes]
+
+    d_min_cosine = np.min(cosine_distances)
+    d_max_cosine = np.max(cosine_distances)
+    sorted_cosine_indices = np.argsort(cosine_distances)
+    different_indices = sorted_cosine_indices[-n:]
+
+    def compile_cosine_results(indices):
+        results = []
+        if d_max_cosine == d_min_cosine:
+            for i in indices:
+                results.append({
+                    'painting_id': painting_ids[i],
+                    'similarity_score': 100.0
+                })
+            return results
+
+        for i in indices:
+            d = cosine_distances[i]
+
+            normalized_d = (d-d_min_cosine) / (d_max_cosine - d_min_cosine)
+            similarity_score = 100.0 * (1.0 - normalized_d)
+            results.append(
+                {'painting_id': painting_ids[i], 'similarity_score': round(similarity_score, 1)})
+
+        return results
+
+    different_palettes_raw = compile_cosine_results(different_indices)
 
     different_palettes = sorted(
         different_palettes_raw,
@@ -102,7 +126,6 @@ def find_similar_palettes(user_palette, n=25):
         reverse=False
     )
 
-    similar_ids = [p['painting_id'] for p in similar_palettes]
     different_ids = [p['painting_id'] for p in different_palettes]
 
     def fetch_and_merge_documents(id_list, score_list):
